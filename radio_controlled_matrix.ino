@@ -67,7 +67,7 @@ void setup() {
   _currentRed = _yellow[0];
   _currentGreen = _yellow[1];
   _currentBlue = _yellow[2];
-  
+
   matrix.fillScreen(matrix.Color444(_currentRed, _currentGreen, _currentBlue));
 }
 
@@ -87,31 +87,34 @@ void loop() {
 void fadeColor(byte color[]) {
   if (_screenEnabled && _animationEnabled) {
     for (byte step = 0; step < 15; step++) {
+      if (_animationEnabled) {
+        // Red
+        if (_currentRed > color[0]) {
+          _currentRed--;
+        } else if (_currentRed < color[0]) {
+          _currentRed++;
+        }
 
-      // Red
-      if (_currentRed > color[0]) {
-        _currentRed--;
-      } else if (_currentRed < color[0]) {
-        _currentRed++;
+        // Green
+        if (_currentGreen > color[1]) {
+          _currentGreen--;
+        } else if (_currentGreen < color[1]) {
+          _currentGreen++;
+        }
+
+        // Blue
+        if (_currentBlue > color[2]) {
+          _currentBlue--;
+        } else if (_currentBlue < color[2]) {
+          _currentBlue++;
+        }
+
+        matrix.fillScreen(matrix.Color444(_currentRed, _currentGreen, _currentBlue));
+        checkForRadioSignals();
+        delay(100);
+      } else {
+        break;
       }
-
-      // Green
-      if (_currentGreen > color[1]) {
-        _currentGreen--;
-      } else if (_currentGreen < color[1]) {
-        _currentGreen++;
-      }
-
-      // Blue
-      if (_currentBlue > color[2]) {
-        _currentBlue--;
-      } else if (_currentBlue < color[2]) {
-        _currentBlue++;
-      }
-
-      matrix.fillScreen(matrix.Color444(_currentRed, _currentGreen, _currentBlue));
-      checkForRadioSignals();
-      delay(100);
     }
   }
 }
@@ -155,6 +158,7 @@ void processPayload() {
           // 20 ON
           _screenEnabled = true;
           _animationEnabled = false;
+          delay(100);
           matrix.fillScreen(matrix.Color444(15, 15, 0));
           break;
         case 30:
