@@ -12,7 +12,7 @@
 /* ==========================================================================
    Pin Configuration
    ========================================================================== */
-   
+
 #define CLK 11
 #define OE  9
 #define LAT 10
@@ -36,19 +36,20 @@ static byte _green[3] = {0, 15, 0};
 static byte _blue[3] = {0, 0, 15};
 static byte _pink[3] = {15, 0, 15};
 
-byte _currentRed;
-byte _currentGreen;
-byte _currentBlue;
+// Constants
+const uint64_t Pipe = 0xE8E8F0F0E1LL;
+const byte UniqueKey = 1;
+const byte GlobalKey = 9;
+const byte PayloadSize = 4; // sizeof(long) == 4 bytes (32 bits)
+
+byte _currentRed = 15;
+byte _currentGreen = 0;
+byte _currentBlue = 0;
 
 boolean _screenEnabled = true;
 boolean _animationEnabled = false;
 
 unsigned long _payload = 0;
-
-const uint64_t Pipe = 0xE8E8F0F0E1LL;
-const byte UniqueKey = 1;
-const byte GlobalKey = 9;
-const byte PayloadSize = 4; // sizeof(long) == 4 (32 bits)
 
 void setup() {
   Serial.begin(9600);
@@ -56,18 +57,12 @@ void setup() {
 
   // the following statements improve transmission range
   radio.setPayloadSize(PayloadSize); // setting the payload size to the needed value
-  radio.setDataRate(RF24_250KBPS); // reducing bandwidth
-
+  radio.setDataRate(RF24_250KBPS); // reduce bandwidth to lowest library allowed value
   radio.openReadingPipe(1, Pipe); // Open one of the 6 pipes for reception
 
   radio.startListening(); // begin to listen
 
   matrix.begin();
-
-  _currentRed = _yellow[0];
-  _currentGreen = _yellow[1];
-  _currentBlue = _yellow[2];
-
   matrix.fillScreen(matrix.Color444(_currentRed, _currentGreen, _currentBlue));
 }
 
@@ -111,6 +106,7 @@ void fadeColor(byte color[]) {
 
         matrix.fillScreen(matrix.Color444(_currentRed, _currentGreen, _currentBlue));
         checkForRadioSignals();
+        
         delay(100);
       } else {
         break;
@@ -132,21 +128,14 @@ void checkForRadioSignals() {
 
 void processPayload() {
   Serial.println(_payload);
-  String receivedPayloadString = String(_payload);
+
+  String receivedPayloadString = String(_payload); // Cast to string for substring functionality
   byte receivedPayloadSize = receivedPayloadString.length();
   byte payloadTargetKey = receivedPayloadString.substring(0, 1).toInt();
 
   if (payloadTargetKey == UniqueKey || payloadTargetKey == GlobalKey) {
     if (receivedPayloadSize == 7) {
-      // Custom color RGB
-      byte receivedRed = receivedPayloadString.substring(1, 3).toInt();
-      byte receivedGreen = receivedPayloadString.substring(3, 5).toInt();
-      byte receivedBlue = receivedPayloadString.substring(5, 7).toInt();
-
-      matrix.fillScreen(matrix.Color444(receivedRed, receivedGreen, receivedBlue));
-
-      _animationEnabled = false;
-      _screenEnabled = true;
+      setStaticColor(receivedPayloadString);
     } else if (receivedPayloadSize == 3) {
       byte command = receivedPayloadString.substring(1, 3).toInt();
       switch (command) {
@@ -156,10 +145,7 @@ void processPayload() {
           break;
         case 20:
           // 20 ON
-          _screenEnabled = true;
-          _animationEnabled = false;
-          delay(100);
-          matrix.fillScreen(matrix.Color444(15, 15, 0));
+          enableScreen();
           break;
         case 30:
           // 30 ON & ANIMATE
@@ -168,6 +154,26 @@ void processPayload() {
           break;
       }
     }
+  }
+}
+
+void setStaticColor(String receivedPayloadString) {
+  _animationEnabled = false;
+  _screenEnabled = true;
+
+  // Custom color RGB
+  byte receivedRed = receivedPayloadString.substring(1, 3).toInt();
+  byte receivedGreen = receivedPayloadString.substring(3, 5).toInt();
+  byte receivedBlue = receivedPayloadString.substring(5, 7).toInt();
+
+  matrix.fillScreen(matrix.Color444(receivedRed, receivedGreen, receivedBlue));
+}
+
+void enableScreen() {
+  if (!_screenEnabled) {
+    _screenEnabled = true;
+    _animationEnabled = false;
+    matrix.fillScreen(matrix.Color444(15, 15, 0));
   }
 }
 
